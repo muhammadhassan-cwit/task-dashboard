@@ -1,13 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Task, Priority } from "@/types";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Priority>("Medium");
   const [dueDate, setDueDate] = useState("");
+
+  useEffect(()=>{
+    const savedTasks = localStorage.getItem("tasks-dashboard-data");
+    if (savedTasks){
+        try{
+            setTasks(JSON.parse(savedTasks));
+        } catch (error) {
+            console.error("Failed to parse tasks:", error);
+        }
+    }
+    setIsLoaded(true);
+  },[]);
+
+  useEffect(()=>{
+    if (isLoaded){
+        const stringifiedTasks = JSON.stringify(tasks);
+        localStorage.setItem("tasks-dashboard-data", stringifiedTasks);
+    }
+  }, [tasks, isLoaded]);
 
   const addTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +59,10 @@ export default function TasksPage() {
       )
     );
   };
+
+  if (!isLoaded){
+    return <div className="p-10 text-center">LOADING TASKS...</div>;
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
