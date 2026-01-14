@@ -36,12 +36,43 @@ export default function TasksPage() {
     }
   }, [tasks, isLoaded]);
 
+  const stats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tasks.reduce(
+      (acc, task) => {
+        acc.total++;
+
+        if (task.completed) {
+          acc.completed++;
+        } else {
+          acc.pending++;
+        }
+
+        if (task.priority === "High") acc.high++;
+        if (task.priority === "Medium") acc.medium++;
+        if (task.priority === "Low") acc.low++;
+
+        if (!task.completed && task.dueDate) {
+          const taskDate = new Date(task.dueDate);
+          taskDate.setHours(0, 0, 0, 0);
+          
+          if (taskDate < today) {
+            acc.overdue++;
+          }
+        }
+
+        return acc;
+      },
+      { total: 0, completed: 0, pending: 0, high: 0, medium: 0, low: 0, overdue: 0 }
+    );
+  }, [tasks]);
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-      
       const matchesPriority = filterPriority === "All" || task.priority === filterPriority;
-
       const matchesStatus = 
         filterStatus === "All" ||
         (filterStatus === "Completed" && task.completed) ||
@@ -85,6 +116,41 @@ export default function TasksPage() {
       <h1 className="text-3xl font-bold text-slate-800 dark:text-white transition-colors">
         My Tasks
       </h1>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Total Tasks</div>
+            <div className="text-2xl font-bold text-slate-800 dark:text-white">
+              {stats.total}
+              <span className="text-sm font-normal text-slate-400 ml-2">
+                ({stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Done)
+              </span>
+            </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Overdue</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.overdue}</div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Status</div>
+            <div className="flex gap-3 mt-1">
+                <span className="text-orange-600 dark:text-orange-400 font-bold">{stats.pending} Active</span>
+                <span className="text-slate-300">|</span>
+                <span className="text-green-600 dark:text-green-400 font-bold">{stats.completed} Done</span>
+            </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Priority</div>
+            <div className="flex gap-2 mt-1 text-sm font-bold">
+                <span className="text-red-500">{stats.high} High</span>
+                <span className="text-yellow-500">{stats.medium} Med</span>
+                <span className="text-green-500">{stats.low} Low</span>
+            </div>
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
         <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">Add New Task</h2>
