@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import Modal from "../../components/Layout/Modal";
+import TaskForm from "../../components/Layout/TaskForm";
 
 interface Task {
   id: number;
@@ -13,14 +15,11 @@ interface Task {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<"All" | "Low" | "Medium" | "High">("All");
   const [filterStatus, setFilterStatus] = useState<"All" | "Pending" | "Completed">("All");
-
-  const [newTask, setNewTask] = useState("");
-  const [priority, setPriority] = useState<"Low" | "Medium" | "High">("Medium");
-  const [dueDate, setDueDate] = useState("");
 
   useEffect(() => {
     const savedTasks = localStorage.getItem("task-dashboard-data");
@@ -82,20 +81,21 @@ export default function TasksPage() {
     });
   }, [tasks, searchQuery, filterPriority, filterStatus]);
 
-  const addTask = () => {
-    if (!newTask.trim()) return;
+  const handleAddTask = useCallback((title: string, priority: "Low" | "Medium" | "High", dueDate: string) => {
     const task: Task = {
       id: Date.now(),
-      title: newTask,
+      title,
       priority,
       dueDate,
       completed: false,
     };
-    setTasks([...tasks, task]);
-    setNewTask("");
-    setDueDate("");
-    setPriority("Medium");
-  };
+    setTasks((prev) => [...prev, task]); 
+    setIsModalOpen(false);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
 
   const toggleTask = (id: number) => {
     setTasks(tasks.map(t => (t.id === id ? { ...t, completed: !t.completed } : t)));
@@ -113,9 +113,17 @@ export default function TasksPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <h1 className="text-3xl font-bold text-slate-800 dark:text-white transition-colors">
-        My Tasks
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white transition-colors">
+            My Tasks
+        </h1>
+        <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+        >
+            + New Task
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
@@ -149,40 +157,6 @@ export default function TasksPage() {
                 <span className="text-yellow-500">{stats.medium} Med</span>
                 <span className="text-green-500">{stats.low} Low</span>
             </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
-        <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">Add New Task</h2>
-        <div className="flex flex-col md:flex-row gap-4">
-          <input
-            type="text"
-            placeholder="What needs to be done?"
-            className="flex-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-          />
-          <select
-            className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as any)}
-          >
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-          </select>
-          <input
-            type="date"
-            className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
-          <button
-            onClick={addTask}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Add Task
-          </button>
         </div>
       </div>
 
@@ -220,7 +194,7 @@ export default function TasksPage() {
       <div className="space-y-4">
         {filteredTasks.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
-            {tasks.length === 0 ? "No tasks yet. Add one above!" : "No tasks match your filters."}
+            {tasks.length === 0 ? "No tasks yet. Click 'New Task' to start!" : "No tasks match your filters."}
           </div>
         ) : (
           filteredTasks.map((task) => (
@@ -276,6 +250,18 @@ export default function TasksPage() {
           ))
         )}
       </div>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={closeModal} 
+        title="Create New Task"
+      >
+        <TaskForm 
+            onAdd={handleAddTask} 
+            onCancel={closeModal} 
+        />
+      </Modal>
+
     </div>
   );
 }
