@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface Task {
   id: number;
@@ -12,10 +12,15 @@ interface Task {
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterPriority, setFilterPriority] = useState<"All" | "Low" | "Medium" | "High">("All");
+  const [filterStatus, setFilterStatus] = useState<"All" | "Pending" | "Completed">("All");
+
   const [newTask, setNewTask] = useState("");
   const [priority, setPriority] = useState<"Low" | "Medium" | "High">("Medium");
   const [dueDate, setDueDate] = useState("");
-  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const savedTasks = localStorage.getItem("task-dashboard-data");
@@ -30,6 +35,21 @@ export default function TasksPage() {
       localStorage.setItem("task-dashboard-data", JSON.stringify(tasks));
     }
   }, [tasks, isLoaded]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesPriority = filterPriority === "All" || task.priority === filterPriority;
+
+      const matchesStatus = 
+        filterStatus === "All" ||
+        (filterStatus === "Completed" && task.completed) ||
+        (filterStatus === "Pending" && !task.completed);
+
+      return matchesSearch && matchesPriority && matchesStatus;
+    });
+  }, [tasks, searchQuery, filterPriority, filterStatus]);
 
   const addTask = () => {
     if (!newTask.trim()) return;
@@ -67,6 +87,7 @@ export default function TasksPage() {
       </h1>
 
       <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+        <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">Add New Task</h2>
         <div className="flex flex-col md:flex-row gap-4">
           <input
             type="text"
@@ -75,7 +96,6 @@ export default function TasksPage() {
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
           />
-          
           <select
             className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             value={priority}
@@ -85,14 +105,12 @@ export default function TasksPage() {
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
-
           <input
             type="date"
             className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
           />
-
           <button
             onClick={addTask}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
@@ -102,13 +120,44 @@ export default function TasksPage() {
         </div>
       </div>
 
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+        <input 
+          type="text" 
+          placeholder="Search tasks..." 
+          className="w-full md:w-auto p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <div className="flex gap-4 w-full md:w-auto">
+          <select 
+            className="flex-1 md:flex-none p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+          >
+            <option value="All">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Completed">Completed</option>
+          </select>
+          <select 
+            className="flex-1 md:flex-none p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value as any)}
+          >
+            <option value="All">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+      </div>
+
       <div className="space-y-4">
-        {tasks.length === 0 ? (
+        {filteredTasks.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
-            No tasks yet. Add one above!
+            {tasks.length === 0 ? "No tasks yet. Add one above!" : "No tasks match your filters."}
           </div>
         ) : (
-          tasks.map((task) => (
+          filteredTasks.map((task) => (
             <div
               key={task.id}
               className={`flex items-center justify-between p-4 rounded-lg border shadow-sm transition-all duration-200 ${
