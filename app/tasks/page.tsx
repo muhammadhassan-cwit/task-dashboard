@@ -1,146 +1,161 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Task, Priority } from "@/types";
+import { useState, useEffect } from "react";
+
+interface Task {
+  id: number;
+  title: string;
+  priority: "Low" | "Medium" | "High";
+  dueDate: string;
+  completed: boolean;
+}
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState<Priority>("Medium");
+  const [newTask, setNewTask] = useState("");
+  const [priority, setPriority] = useState<"Low" | "Medium" | "High">("Medium");
   const [dueDate, setDueDate] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(()=>{
-    const savedTasks = localStorage.getItem("tasks-dashboard-data");
-    if (savedTasks){
-        try{
-            setTasks(JSON.parse(savedTasks));
-        } catch (error) {
-            console.error("Failed to parse tasks:", error);
-        }
+  useEffect(() => {
+    const savedTasks = localStorage.getItem("task-dashboard-data");
+    if (savedTasks) {
+      setTasks(JSON.parse(savedTasks));
     }
     setIsLoaded(true);
-  },[]);
+  }, []);
 
-  useEffect(()=>{
-    if (isLoaded){
-        const stringifiedTasks = JSON.stringify(tasks);
-        localStorage.setItem("tasks-dashboard-data", stringifiedTasks);
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem("task-dashboard-data", JSON.stringify(tasks));
     }
   }, [tasks, isLoaded]);
 
-  const addTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title: title,
-      priority: priority,
+  const addTask = () => {
+    if (!newTask.trim()) return;
+    const task: Task = {
+      id: Date.now(),
+      title: newTask,
+      priority,
+      dueDate,
       completed: false,
-      dueDate: dueDate || new Date().toISOString().split("T")[0],
     };
-
-    setTasks([...tasks, newTask]);
-
-    setTitle("");
-    setPriority("Medium");
+    setTasks([...tasks, task]);
+    setNewTask("");
     setDueDate("");
+    setPriority("Medium");
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+  const toggleTask = (id: number) => {
+    setTasks(tasks.map(t => (t.id === id ? { ...t, completed: !t.completed } : t)));
   };
 
-  const toggleTask = (id: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const deleteTask = (id: number) => {
+    setTasks(tasks.filter(t => t.id !== id));
   };
 
-  if (!isLoaded){
-    return <div className="p-10 text-center">LOADING TASKS...</div>;
-  }
+  const getPriorityColor = (p: string) => {
+    if (p === "High") return "text-red-500 font-bold";
+    if (p === "Medium") return "text-yellow-500 font-medium";
+    return "text-green-500";
+  };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-slate-800">My Tasks</h1>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <h1 className="text-3xl font-bold text-slate-800 dark:text-white transition-colors">
+        My Tasks
+      </h1>
 
-      <form onSubmit={addTask} className="bg-white p-6 rounded-lg shadow-sm mb-8 border border-slate-200">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
         <div className="flex flex-col md:flex-row gap-4">
           <input
             type="text"
             placeholder="What needs to be done?"
-            className="flex-1 p-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            className="flex-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
           />
           
           <select
+            className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             value={priority}
-            onChange={(e) => setPriority(e.target.value as Priority)}
-            className="p-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setPriority(e.target.value as any)}
           >
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
             <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
           </select>
 
           <input
             type="date"
+            className="p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="p-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
           <button
-            type="submit"
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors font-medium"
+            onClick={addTask}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             Add Task
           </button>
         </div>
-      </form>
+      </div>
 
       <div className="space-y-4">
         {tasks.length === 0 ? (
-          <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-            <p>No tasks yet. Add one above!</p>
+          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-colors">
+            No tasks yet. Add one above!
           </div>
         ) : (
           tasks.map((task) => (
             <div
               key={task.id}
-              className={`flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border ${task.completed ? "border-green-200 bg-green-50" : "border-slate-200"}`}
+              className={`flex items-center justify-between p-4 rounded-lg border shadow-sm transition-all duration-200 ${
+                task.completed 
+                  ? "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-75" 
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md"
+              }`}
             >
               <div className="flex items-center gap-4">
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => toggleTask(task.id)}
-                  className="w-5 h-5 accent-blue-600 cursor-pointer"
-                />
+                <button
+                  onClick={() => toggleTask(task.id)}
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    task.completed
+                      ? "bg-green-500 border-green-500 text-white"
+                      : "border-slate-300 dark:border-slate-500 hover:border-green-500"
+                  }`}
+                >
+                  {task.completed && "✓"}
+                </button>
                 
                 <div>
-                  <h3 className={`font-medium ${task.completed ? "line-through text-slate-400" : "text-slate-800"}`}>
+                  <h3 className={`font-medium text-lg ${
+                    task.completed 
+                      ? "text-slate-500 dark:text-slate-500 line-through" 
+                      : "text-slate-800 dark:text-slate-100"
+                  }`}>
                     {task.title}
                   </h3>
-                  <div className="text-xs text-slate-500 mt-1 space-x-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${task.priority === 'High' ? 'bg-red-100 text-red-700' : task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                  <div className="flex items-center gap-3 text-sm mt-1">
+                    <span className={getPriorityColor(task.priority)}>
                       {task.priority}
                     </span>
-                    <span>Due: {task.dueDate}</span>
+                    {task.dueDate && (
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Due: {task.dueDate}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
-              
+
               <button
                 onClick={() => deleteTask(task.id)}
-                className="text-red-500 hover:text-red-700 px-3 py-1 text-sm hover:bg-red-50 rounded transition-colors"
+                className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                aria-label="Delete task"
               >
-                Delete
+                ✕
               </button>
             </div>
           ))
