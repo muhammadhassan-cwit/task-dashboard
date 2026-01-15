@@ -97,7 +97,7 @@ export default function TasksPage() {
     setTasks(tasks.filter(t => t.id !== id));
   };
 
-  // --- DRAG AND DROP HANDLERS (OPTIMIZED WITH useCallback) ---
+  // --- DRAG AND DROP HANDLERS ---
   const handleDragStart = useCallback((e: React.DragEvent, id: number) => {
     setDraggedTaskId(id);
     e.dataTransfer.effectAllowed = "move"; 
@@ -123,8 +123,33 @@ export default function TasksPage() {
 
     setTasks(newTasks);
     setDraggedTaskId(null);
-  }, [tasks, draggedTaskId]); // Dependencies: updates only when these change
-  // -----------------------------------------------------------
+  }, [tasks, draggedTaskId]);
+  // ------------------------------
+
+  // --- 3. NEW: KEYBOARD SHORTCUTS ---
+  const handleKeyboard = useCallback((e: KeyboardEvent) => {
+  
+    if (e.altKey && e.code === 'KeyN') {
+      e.preventDefault(); 
+      setIsModalOpen(true);
+    }
+
+    // Escape to Close Modal
+    if (e.key === 'Escape') {
+      setIsModalOpen(false);
+    }
+  }, []); 
+
+  // Attach the listener
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboard);
+
+    // CLEANUP: Remove the listener when the page closes/updates
+    return () => {
+      window.removeEventListener('keydown', handleKeyboard);
+    };
+  }, [handleKeyboard]);
+  // ----------------------------------
 
   const getPriorityColor = (p: string) => {
     if (p === "High") return "text-red-500 font-bold";
@@ -141,6 +166,7 @@ export default function TasksPage() {
         <button
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+            title="Press alt + N to open" // Helper text
         >
             + New Task
         </button>
