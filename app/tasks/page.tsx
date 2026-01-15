@@ -169,11 +169,11 @@ export default function TasksPage() {
             </div>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <div className="text-slate-500 dark:text-slate-400 text-sm">By Priority</div>
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Priority</div>
             <div className="flex gap-2 mt-1 text-sm font-bold">
-                <span className="text-red-500">{stats.high} Hi</span>
-                <span className="text-yellow-500">{stats.medium} Med</span>
-                <span className="text-green-500">{stats.low} Lo</span>
+                <span className="text-red-500">{stats.high} High</span>
+                <span className="text-yellow-500">{stats.medium} Medium</span>
+                <span className="text-green-500">{stats.low} Low</span>
             </div>
         </div>
       </div>
