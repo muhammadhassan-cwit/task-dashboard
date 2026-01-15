@@ -16,6 +16,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<"All" | "Low" | "Medium" | "High">("All");
@@ -42,26 +44,16 @@ export default function TasksPage() {
     return tasks.reduce(
       (acc, task) => {
         acc.total++;
-
-        if (task.completed) {
-          acc.completed++;
-        } else {
-          acc.pending++;
-        }
-
+        if (task.completed) acc.completed++;
+        else acc.pending++;
         if (task.priority === "High") acc.high++;
         if (task.priority === "Medium") acc.medium++;
         if (task.priority === "Low") acc.low++;
-
         if (!task.completed && task.dueDate) {
           const taskDate = new Date(task.dueDate);
           taskDate.setHours(0, 0, 0, 0);
-          
-          if (taskDate < today) {
-            acc.overdue++;
-          }
+          if (taskDate < today) acc.overdue++;
         }
-
         return acc;
       },
       { total: 0, completed: 0, pending: 0, high: 0, medium: 0, low: 0, overdue: 0 }
@@ -105,6 +97,35 @@ export default function TasksPage() {
     setTasks(tasks.filter(t => t.id !== id));
   };
 
+  // --- DRAG AND DROP HANDLERS (OPTIMIZED WITH useCallback) ---
+  const handleDragStart = useCallback((e: React.DragEvent, id: number) => {
+    setDraggedTaskId(id);
+    e.dataTransfer.effectAllowed = "move"; 
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: number) => {
+    e.preventDefault();
+    
+    if (draggedTaskId === null || draggedTaskId === targetId) return;
+
+    const draggedIndex = tasks.findIndex(t => t.id === draggedTaskId);
+    const targetIndex = tasks.findIndex(t => t.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newTasks = [...tasks];
+    const [movedTask] = newTasks.splice(draggedIndex, 1);
+    newTasks.splice(targetIndex, 0, movedTask);
+
+    setTasks(newTasks);
+    setDraggedTaskId(null);
+  }, [tasks, draggedTaskId]); // Dependencies: updates only when these change
+  // -----------------------------------------------------------
+
   const getPriorityColor = (p: string) => {
     if (p === "High") return "text-red-500 font-bold";
     if (p === "Medium") return "text-yellow-500 font-medium";
@@ -135,12 +156,10 @@ export default function TasksPage() {
               </span>
             </div>
         </div>
-
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-sm">Overdue</div>
             <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.overdue}</div>
         </div>
-
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-sm">Status</div>
             <div className="flex gap-3 mt-1">
@@ -149,12 +168,11 @@ export default function TasksPage() {
                 <span className="text-green-600 dark:text-green-400 font-bold">{stats.completed} Done</span>
             </div>
         </div>
-
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-sm">Priority</div>
             <div className="flex gap-2 mt-1 text-sm font-bold">
                 <span className="text-red-500">{stats.high} High</span>
-                <span className="text-yellow-500">{stats.medium} Med</span>
+                <span className="text-yellow-500">{stats.medium} Medium</span>
                 <span className="text-green-500">{stats.low} Low</span>
             </div>
         </div>
@@ -200,22 +218,33 @@ export default function TasksPage() {
           filteredTasks.map((task) => (
             <div
               key={task.id}
-              className={`flex items-center justify-between p-4 rounded-lg border shadow-sm transition-all duration-200 ${
+              draggable
+              onDragStart={(e) => handleDragStart(e, task.id)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, task.id)}
+              className={`flex items-center justify-between p-4 rounded-lg border shadow-sm transition-all duration-200 cursor-move ${
+                draggedTaskId === task.id ? "opacity-40 border-dashed border-blue-400" : ""
+              } ${
                 task.completed 
                   ? "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-75" 
                   : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md"
               }`}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 pointer-events-none"> 
                 <button
-                  onClick={() => toggleTask(task.id)}
-                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    task.completed
-                      ? "bg-green-500 border-green-500 text-white"
-                      : "border-slate-300 dark:border-slate-500 hover:border-green-500"
-                  }`}
+                   onPointerDown={(e) => e.stopPropagation()} 
+                   className="pointer-events-auto"
                 >
-                  {task.completed && "✓"}
+                    <div 
+                        onClick={() => toggleTask(task.id)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                            task.completed
+                            ? "bg-green-500 border-green-500 text-white"
+                            : "border-slate-300 dark:border-slate-500 hover:border-green-500"
+                        }`}
+                    >
+                    {task.completed && "✓"}
+                    </div>
                 </button>
                 
                 <div>
@@ -241,8 +270,9 @@ export default function TasksPage() {
 
               <button
                 onClick={() => deleteTask(task.id)}
-                className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                className="text-slate-400 hover:text-red-500 transition-colors p-2 cursor-pointer pointer-events-auto"
                 aria-label="Delete task"
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 ✕
               </button>
